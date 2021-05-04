@@ -4,9 +4,8 @@ import torch.optim
 import numpy as np
 import random
 import torch.nn.functional as F
-from collections import namedtuple, deque
 import os
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from utils import Replay_Memory, Transition, Prioritized_Replay_Memory
 
 
 class DQN(nn.Module):
@@ -17,6 +16,8 @@ class DQN(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(inputs, hidden_size),
             nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
             nn.Linear(hidden_size, outputs))
 
     def forward(self, x):
@@ -25,7 +26,10 @@ class DQN(nn.Module):
 
 class agent:
 
-    def __init__(self, epsilon_start, epsilon_end, epsilon_anneal, nb_actions, learning_rate, gamma, batch_size, replay_memory_size, hidden_size, inputs):
+    def __init__(self, epsilon_start, epsilon_end, epsilon_anneal, nb_actions, learning_rate, gamma, batch_size, replay_memory_size, hidden_size, model_input_size, use_PER):
+
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
 
         self.epsilon_start = epsilon_start
         self.epsilon_end = epsilon_end
@@ -42,18 +46,22 @@ class agent:
         self.step_no = 0
 
         self.policy = DQN(hidden_size=hidden_size,
-                          inputs=inputs, outputs=nb_actions).to(device)
+                          inputs=model_input_size, outputs=nb_actions).to(self.device)
         self.target = DQN(hidden_size=hidden_size,
-                          inputs=inputs, outputs=nb_actions).to(device)
+                          inputs=model_input_size, outputs=nb_actions).to(self.device)
         self.target.load_state_dict(self.policy.state_dict())
         self.target.eval()
         self.hidden_size = hidden_size
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=self.learning_rate)
+            self.policy.parameters(), lr=self.learning_rate,weight_decay=0.01)
 
-        self.replay = replay_memory(replay_memory_size)
+        self.use_PER = use_PER
+        if use_PER:
+            self.replay = Prioritized_Replay_Memory(replay_memory_size)
+        else:
+            self.replay = Replay_Memory(replay_memory_size)
 
-        self.loss_function = torch.nn.SmoothL1Loss()
+        self.loss_function = torch.nn.MSELoss()
 
     # Get the current epsilon value according to the start/end and annealing values
     def get_epsilon(self):
@@ -71,14 +79,15 @@ class agent:
             with torch.no_grad():
                 return torch.argmax(self.policy(state)).view(1)
         else:
-            return torch.tensor([random.randrange(self.num_actions)], device=device, dtype=torch.long)
+            return torch.tensor([random.randrange(self.num_actions)], device=self.device, dtype=torch.long)
 
     # update the model according to one step td targets
     def update_model(self):
-        batch = self.replay.sample(self.batch_size)
-
-        if batch == None:
-            return
+        if self.use_PER:
+            batch_index, batch, ImportanceSamplingWeights = self.replay.sample(
+                self.batch_size)
+        else:
+            batch = self.replay.sample(self.batch_size)
 
         batch_tuple = Transition(*zip(*batch))
 
@@ -95,7 +104,15 @@ class agent:
         td_targets = reward+(1-done.float())*self.gamma * \
             self.target(next_state).max(1)[0].detach_()
 
-        loss = self.loss_function(td_estimates, td_targets)
+        if self.use_PER:
+            
+            loss = (torch.tensor(ImportanceSamplingWeights) * \
+                self.loss_function(td_estimates, td_targets)).mean()
+
+            errors = td_estimates - td_targets
+            self.replay.batch_update(batch_index, errors.data.numpy())
+        else:
+            loss = self.loss_function(td_estimates, td_targets)
 
         loss.backward()
 
@@ -119,26 +136,14 @@ class agent:
             'model_state_dict': self.policy.state_dict()
         }, filename)
 
+    # load a model
+    def load(self, path):
+        dirname = os.path.dirname(__file__)
+        filename = os.path.join(dirname, path)
+        self.policy.load_state_dict(torch.load(filename)['model_state_dict'])
+        self.policy.eval()
+
     # store experience in replay memory
+
     def cache(self, state, action, reward, next_state, done):
         self.replay.push(state, action, reward, next_state, done)
-
-
-Transition = namedtuple(
-    "Transition", ("state", "action", "reward", "next_state", "done"))
-
-
-# simple replay memory class
-
-class replay_memory:
-
-    def __init__(self, size):
-        self.memory = deque([], maxlen=size)
-
-    def push(self, *args):
-        self.memory.append(Transition(*args))
-
-    def sample(self, batch_size):
-        if batch_size > len(self.memory):
-            return None
-        return random.sample(self.memory, batch_size)
