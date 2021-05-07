@@ -53,7 +53,7 @@ class agent:
         self.target.eval()
         self.hidden_size = hidden_size
         self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=self.learning_rate,weight_decay=0.01)
+            self.policy.parameters(), lr=self.learning_rate, weight_decay=0.01)
 
         self.use_PER = use_PER
         if use_PER:
@@ -61,7 +61,7 @@ class agent:
         else:
             self.replay = Replay_Memory(replay_memory_size)
 
-        self.loss_function = torch.nn.MSELoss()
+        self.loss_function = torch.nn.SmoothL1Loss()
 
     # Get the current epsilon value according to the start/end and annealing values
     def get_epsilon(self):
@@ -105,9 +105,9 @@ class agent:
             self.target(next_state).max(1)[0].detach_()
 
         if self.use_PER:
-            
-            loss = (torch.tensor(ImportanceSamplingWeights) * \
-                self.loss_function(td_estimates, td_targets)).mean()
+
+            loss = (torch.tensor(ImportanceSamplingWeights, device=self.device) * self.loss_function(
+                td_estimates, td_targets)).sum() * self.loss_function(td_estimates, td_targets)
 
             errors = td_estimates - td_targets
             self.replay.batch_update(batch_index, errors.data.numpy())
@@ -131,17 +131,13 @@ class agent:
     def save(self, path, name):
         dirname = os.path.dirname(__file__)
         filename = os.path.join(dirname, os.path.join(path, name+".pt"))
-
-        torch.save({
-            'model_state_dict': self.policy.state_dict()
-        }, filename)
+        torch.save(self.policy.state_dict(), filename)
 
     # load a model
     def load(self, path):
         dirname = os.path.dirname(__file__)
         filename = os.path.join(dirname, path)
-        self.policy.load_state_dict(torch.load(filename)['model_state_dict'])
-        self.policy.eval()
+        self.policy.load_state_dict(torch.load(filename))
 
     # store experience in replay memory
 
