@@ -1,6 +1,9 @@
 # Simple implementation of a DQN as well as Advantage Critic 
 Really simple implementation of DQN and Advantage-Critic in pytorch for gym environments.
-
+# Contents
+* agent.py - contains code for agents and models
+* utils.py - contains code for replay memory
+* environment.py - contains code for training and evaluation agents
 # Usage 
 To use, simply run the environment.py script using the arguments given below
 e.g
