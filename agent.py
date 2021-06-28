@@ -54,8 +54,8 @@ class QAgent:
         self.target.load_state_dict(self.policy.state_dict())
         self.target.eval()
         self.hidden_size = hidden_size
-        self.optimizer = torch.optim.Adam(
-            self.policy.parameters(), lr=self.learning_rate, weight_decay=0.01)
+        self.optimizer = torch.optim.AdamW(
+            self.policy.parameters(), lr=self.learning_rate)
 
         self.use_PER = use_PER
         if use_PER:
@@ -63,7 +63,7 @@ class QAgent:
         else:
             self.replay = Replay_Memory(replay_memory_size)
 
-        self.loss_function = torch.nn.SmoothL1Loss()
+        self.loss_function = torch.nn.MSELoss()
 
     # Get the current epsilon value according to the start/end and annealing values
     def get_epsilon(self):
@@ -203,6 +203,7 @@ class ActorCriticAgent:
     # select an action with policy
 
     def select_action(self, state):
+        self.step_no+=1
         action_probs, state_value = self.model(state)
 
         action_dist = Categorical(action_probs)

@@ -6,14 +6,13 @@ import torch
 import matplotlib.pyplot as plt
 import wandb
 from torch.distributions import Categorical
+import argparse
 
 # initiate wandb logging
 wandb.init(project='DQN-Cartpole', entity='edan')
 
 # Some parameters
-MAX_NUMBER_OF_STEPS = 500
-EPISODES_TO_TRAIN = 700
-START_RENDERING = 300
+
 LOG_VIDEO = False
 
 
@@ -25,7 +24,7 @@ def get_frame(env):
 
 
 # trains agent
-def trainQ(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episodes=EPISODES_TO_TRAIN):
+def trainQ(agent, env, number_of_steps, number_of_episodes, START_RENDERING, update_frequency):
     # loop chosen number of episodes
     for ep_number in range(number_of_episodes):
         # Get initial state observation and format it into a tensor
@@ -69,7 +68,7 @@ def trainQ(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episodes=E
                 loss = agent.update_model()
                 wandb.log({"loss": loss})
 
-            if agent.step_no % 1000 == 0:
+            if agent.step_no % update_frequency == 0:
                 agent.update_target()
 
             # set current state as next_state
@@ -90,7 +89,9 @@ def trainQ(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episodes=E
     env.close()
 
 # trains agent
-def trainActor(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episodes=EPISODES_TO_TRAIN):
+
+
+def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING):
     # loop chosen number of episodes
     for ep_number in range(number_of_episodes):
         # Get initial state observation and format it into a tensor
@@ -119,7 +120,7 @@ def trainActor(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episod
                 next_state, dtype=torch.float32, device=agent.device)
             reward = torch.tensor(
                 reward, dtype=torch.float32, device=agent.device)
-            
+
             # store step in agent's replay memory
             agent.cache(action_dist.log_prob(action), reward, state_value)
 
@@ -129,7 +130,7 @@ def trainActor(agent, env, number_of_steps=MAX_NUMBER_OF_STEPS, number_of_episod
             # if done finish episode
             if done:
                 break
-        
+
         loss = agent.update_model()
         wandb.log({"loss": loss})
         wandb.log({"reward": reward_tot})
@@ -163,20 +164,72 @@ def eval(agent, env, number_of_episodes):
 
 
 if __name__ == "__main__":
-    env = gym.make("CartPole-v1")
 
-    # a = QAgent(epsilon_start=0.99, epsilon_end=0.01, epsilon_anneal=12000, nb_actions=env.action_space.n,
-    #           learning_rate=0.0001,
-    #           gamma=1, batch_size=64, replay_memory_size=100000, hidden_size=128,
-    #           model_input_size=env.observation_space.shape[0], use_PER=True)
+    parser = argparse.ArgumentParser(
+        description='Train a agent on gym environments')
 
-    a = ActorCriticAgent(nb_actions=env.action_space.n,
-              learning_rate=0.0001,
-              gamma=0.9, hidden_size=256,
-              model_input_size=env.observation_space.shape[0])
-              
-    trainActor(a, env=env)
+    parser.add_argument('--gym_env', "-g", default="CartPole-v1", type=str,
+                        help='The name of the gym environment')
 
-    # a.load("models/cartpole.pt")
+    parser.add_argument('--hidden_size', "-hs", default=128, type=int,
+                        help='size of the hidden layer')
 
-    # eval(a,env=env,number_of_episodes=20)
+    parser.add_argument('--gamma', "-gm", default=0.99, type=float,
+                        help='The discount factor used by the agent')
+
+    parser.add_argument('--learning_rate', "-lr", default=0.001, type=float,
+                        help='The learning rate used by the optimizer')
+
+    parser.add_argument('--epsilon_start', "-es", default=0.9, type=float,
+                        help='The starting value for epsilon in epsilon-greedy')
+
+    parser.add_argument('--epsilon_end', "-ee", default=0.001, type=float,
+                        help='The ending value for epsilon in epsilon-greedy')
+
+    parser.add_argument('--epsilon_anneal', "-en", default=12000, type=int,
+                        help='The number of steps to which the epsilon anneals down')
+
+    parser.add_argument('--batch_size', "-bs", default=1500, type=int,
+                        help='Batch size to use in DQN')
+
+    parser.add_argument('--replay_memory_size', "-re", default=100000, type=int,
+                        help='Size of replay memory')
+
+    parser.add_argument('--use_PER', "-up",
+                        action='store_true', help='Use prioritised replay memory in DQN')
+
+    parser.add_argument('--use_DQN', "-ud",
+                        action='store_true', help='Use DQN agent instead of advantage-critic')
+
+    parser.add_argument('--MAX_NUMBER_OF_STEPS', "-ms", default=501, type=int,
+                        help='The max number of steps per episode')
+
+    parser.add_argument('--EPISODES_TO_TRAIN', "-et", default=1000, type=int,
+                        help='The number of episodes to train')
+
+    parser.add_argument('--START_RENDERING', "-sr", default=900, type=int,
+                        help='The number of episodes to train before rendering - used for training speed up')
+
+    parser.add_argument('--update_frequency', "-uf", default=1000, type=int,
+                        help='The number of steps per updating target DQN')
+
+    args = parser.parse_args()
+
+    env = gym.make(args.gym_env)
+
+    if args.use_DQN:
+
+        a = QAgent(epsilon_start=args.epsilon_start, epsilon_end=args.epsilon_end, epsilon_anneal=args.epsilon_anneal, nb_actions=env.action_space.n,
+                   learning_rate=args.learning_rate,
+                   gamma=args.gamma, batch_size=args.batch_size, replay_memory_size=args.replay_memory_size, hidden_size=args.hidden_size,
+                   model_input_size=env.observation_space.shape[0], use_PER=args.use_PER)
+        trainQ(a, env, args.MAX_NUMBER_OF_STEPS, args.EPISODES_TO_TRAIN,
+               args.START_RENDERING, args.update_frequency)
+    else:
+
+        a = ActorCriticAgent(nb_actions=env.action_space.n,
+                             learning_rate=args.learning_rate,
+                             gamma=args.gamma, hidden_size=args.hidden_size,
+                             model_input_size=env.observation_space.shape[0])
+        trainActor(a, env, args.MAX_NUMBER_OF_STEPS,
+                   args.EPISODES_TO_TRAIN, args.START_RENDERING)
