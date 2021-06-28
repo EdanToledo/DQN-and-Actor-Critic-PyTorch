@@ -1,4 +1,4 @@
-# Simple implementation of a DQN as well as Advantage Critic 
+# Simple implementation of a DQN and Advantage Critic 
 Really simple implementation of DQN and Advantage-Critic in pytorch for gym environments.
 # Contents
 * agent.py - contains code for agents and models
