@@ -8,6 +8,7 @@ import os
 from utils import Replay_Memory, Transition, Prioritized_Replay_Memory, TransitionPolicy
 from torch.distributions import Categorical, Normal
 
+
 class DQN(nn.Module):
 
     def __init__(self, inputs, hidden_size, outputs):
@@ -210,7 +211,7 @@ class ActorCritic(nn.Module):
 
 class ActorCriticAgent:
 
-    def __init__(self, nb_actions, learning_rate, gamma, hidden_size, model_input_size,entropy_coeff_start,entropy_coeff_end,entropy_coeff_anneal,continuous):
+    def __init__(self, nb_actions, learning_rate, gamma, hidden_size, model_input_size, entropy_coeff_start, entropy_coeff_end, entropy_coeff_anneal, continuous):
 
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
@@ -230,10 +231,10 @@ class ActorCriticAgent:
         self.step_no = 0
         if self.continuous:
             self.model = ActorCriticContinuous(hidden_size=hidden_size,
-                                           inputs=model_input_size, outputs=nb_actions).to(self.device)
+                                               inputs=model_input_size, outputs=nb_actions).to(self.device)
         else:
             self.model = ActorCritic(hidden_size=hidden_size,
-                                 inputs=model_input_size, outputs=nb_actions).to(self.device)
+                                     inputs=model_input_size, outputs=nb_actions).to(self.device)
 
         self.hidden_size = hidden_size
         self.optimizer = torch.optim.Adam(
@@ -251,18 +252,17 @@ class ActorCriticAgent:
                 ((self.entropy_coefficient_start - self.entropy_coefficient_end) /
                  self.entropy_coefficient_anneal)
         return entropy
-    
+
     # select an action with policy
     def select_action(self, state):
         self.step_no += 1
-       
+
         if self.continuous:
             action_mean, action_dev, state_value = self.model(state)
             action_dist = Normal(action_mean, action_dev)
         else:
             action_probs, state_value = self.model(state)
             action_dist = Categorical(action_probs)
-
 
         return action_dist, state_value
 
@@ -306,8 +306,7 @@ class ActorCriticAgent:
         loss = torch.stack(policy_losses).mean() + \
             torch.stack(value_losses).mean() + self.get_entropy_coefficient() * \
             torch.stack(entropy_loss).mean()
-        
-        
+
         loss.backward()
 
         self.optimizer.step()

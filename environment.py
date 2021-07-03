@@ -88,7 +88,8 @@ def trainQ(agent, env, number_of_steps, number_of_episodes, START_RENDERING, upd
     agent.save("models", "car")
     env.close()
 
-def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING,action_lower_bound=0,action_higher_bound=0,continuous=False):
+
+def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING, action_lower_bound=0, action_higher_bound=0, continuous=False):
     # loop chosen number of episodes
     for ep_number in range(number_of_episodes):
         # Get initial state observation and format it into a tensor
@@ -108,7 +109,8 @@ def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING,
 
             action = action_dist.sample()
             if continuous:
-                action = torch.clamp(action, action_lower_bound, action_higher_bound)
+                action = torch.clamp(
+                    action, action_lower_bound, action_higher_bound)
                 action_execute = action.detach().numpy()
             else:
                 action_execute = action.item()
@@ -124,7 +126,8 @@ def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING,
                 reward, dtype=torch.float32, device=agent.device)
 
             # store step in agent's replay memory
-            agent.cache(action_dist.log_prob(action), reward, state_value,action_dist.entropy().mean())
+            agent.cache(action_dist.log_prob(action), reward,
+                        state_value, action_dist.entropy().mean())
 
             # set current state as next_state
             state = next_state
@@ -197,17 +200,14 @@ if __name__ == "__main__":
 
     parser.add_argument('--entropy_coefficient_start', "-efs", default=0.9, type=float,
                         help='The starting entropy coefficient used in entropy loss')
-    
+
     parser.add_argument('--entropy_anneal', "-etn", default=10000, type=int,
                         help='The number of steps to which the epsilon anneals down')
-    
+
     args = parser.parse_args()
 
     env = gym.make(args.gym_env)
 
-  
-
-    
     if (type(env.action_space) == Discrete):
         if args.use_DQN:
 
@@ -219,17 +219,17 @@ if __name__ == "__main__":
                    args.START_RENDERING, args.update_frequency)
         else:
 
-            a = ActorCriticAgent(continuous=False,nb_actions=env.action_space.n,
+            a = ActorCriticAgent(continuous=False, nb_actions=env.action_space.n,
                                  learning_rate=args.learning_rate,
                                  gamma=args.gamma, hidden_size=args.hidden_size,
-                                 model_input_size=env.observation_space.shape[0],entropy_coeff_start=args.entropy_coefficient_start,entropy_coeff_end=args.entropy_coefficient_end,entropy_coeff_anneal=args.entropy_anneal)
+                                 model_input_size=env.observation_space.shape[0], entropy_coeff_start=args.entropy_coefficient_start, entropy_coeff_end=args.entropy_coefficient_end, entropy_coeff_anneal=args.entropy_anneal)
             trainActor(a, env, args.MAX_NUMBER_OF_STEPS,
                        args.EPISODES_TO_TRAIN, args.START_RENDERING)
     else:
-       
-        a = ActorCriticAgent(continuous=True,nb_actions= env.action_space.shape[0],
-                                       learning_rate=args.learning_rate,
-                                       gamma=args.gamma, hidden_size=args.hidden_size,
-                                       model_input_size=env.observation_space.shape[0],entropy_coeff_start=args.entropy_coefficient_start,entropy_coeff_end=args.entropy_coefficient_end,entropy_coeff_anneal=args.entropy_anneal)
+
+        a = ActorCriticAgent(continuous=True, nb_actions=env.action_space.shape[0],
+                             learning_rate=args.learning_rate,
+                             gamma=args.gamma, hidden_size=args.hidden_size,
+                             model_input_size=env.observation_space.shape[0], entropy_coeff_start=args.entropy_coefficient_start, entropy_coeff_end=args.entropy_coefficient_end, entropy_coeff_anneal=args.entropy_anneal)
         trainActor(a, env, args.MAX_NUMBER_OF_STEPS,
-                   args.EPISODES_TO_TRAIN, args.START_RENDERING,action_lower_bound= env.action_space.low[0],action_higher_bound= env.action_space.high[0],continuous=True)
+                   args.EPISODES_TO_TRAIN, args.START_RENDERING, action_lower_bound=env.action_space.low[0], action_higher_bound=env.action_space.high[0], continuous=True)
