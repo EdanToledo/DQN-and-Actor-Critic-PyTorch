@@ -6,7 +6,7 @@ Transition = namedtuple(
     "Transition", ("state", "action", "reward", "next_state", "done"))
 
 TransitionPolicy = namedtuple(
-    "TransitionPolicy", ("action_prob", "reward", "state_value"))
+    "TransitionPolicy", ("action_prob", "reward", "state_value","entropy"))
     
 # Simple Replay Memory
 class Replay_Memory:
