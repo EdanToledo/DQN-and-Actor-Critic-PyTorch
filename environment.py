@@ -85,7 +85,7 @@ def trainQ(agent, env, number_of_steps, number_of_episodes, START_RENDERING, upd
             wandb.log({"Episode Simulation Render": wandb.Video(
                 np.stack(frames), fps=50, format="gif")})
 
-    agent.save("models", "car")
+    
     env.close()
 
 
@@ -141,7 +141,7 @@ def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING,
         wandb.log({"reward": reward_tot})
         wandb.log({"episode": ep_number})
 
-    agent.save("models", "car")
+   
     env.close()
 
 
@@ -195,13 +195,13 @@ if __name__ == "__main__":
     parser.add_argument('--update_frequency', "-uf", default=600, type=int,
                         help='The number of steps per updating target DQN')
 
-    parser.add_argument('--entropy_coefficient_end', "-efe", default=0.001, type=float,
+    parser.add_argument('--entropy_coefficient_end', "-efe", default=0.05, type=float,
                         help='The ending entropy coefficient used in entropy loss')
 
     parser.add_argument('--entropy_coefficient_start', "-efs", default=0.9, type=float,
                         help='The starting entropy coefficient used in entropy loss')
 
-    parser.add_argument('--entropy_anneal', "-etn", default=10000, type=int,
+    parser.add_argument('--entropy_anneal', "-etn", default=12000, type=int,
                         help='The number of steps to which the epsilon anneals down')
 
     args = parser.parse_args()

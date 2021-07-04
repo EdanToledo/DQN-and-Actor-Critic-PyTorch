@@ -7,23 +7,7 @@ import torch.nn.functional as F
 import os
 from utils import Replay_Memory, Transition, Prioritized_Replay_Memory, TransitionPolicy
 from torch.distributions import Categorical, Normal
-
-
-class DQN(nn.Module):
-
-    def __init__(self, inputs, hidden_size, outputs):
-        super(DQN, self).__init__()
-        # Simple feed forward NN
-        self.net = nn.Sequential(
-            nn.Linear(inputs, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, outputs))
-
-    def forward(self, x):
-        return self.net(x)
-
+from models import ActorCriticContinuous,ActorCritic,DQN
 
 class QAgent:
 
@@ -146,69 +130,6 @@ class QAgent:
         self.replay.push(state, action, reward, next_state, done)
 
 
-class ActorCriticContinuous(nn.Module):
-    def __init__(self, inputs, hidden_size, outputs):
-        super(ActorCriticContinuous, self).__init__()
-        self.policy = nn.Sequential(
-            nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, outputs)
-        )
-
-        self.log_deviations = nn.Parameter(torch.full((outputs,), 0.1))
-        # self.dev = nn.Sequential(
-        #     nn.Linear(inputs, hidden_size),
-        #     nn.Tanh(),
-        #     nn.Linear(hidden_size, hidden_size),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_size, outputs)
-        # )
-
-        self.critic = nn.Sequential(
-            nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, 1)
-        )
-
-    def forward(self, x):
-        means = self.policy(x)
-        state_value = self.critic(x)
-        # dev = torch.clamp(self.dev(x).exp(), 1e-3, 50)
-        dev = torch.clamp(self.log_deviations.exp(), 1e-3, 50)
-        return means, dev, state_value
-
-
-class ActorCritic(nn.Module):
-    def __init__(self, inputs, hidden_size, outputs):
-        super(ActorCritic, self).__init__()
-        self.policy = nn.Sequential(
-            nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, outputs),
-            nn.Softmax(dim=-1)
-        )
-
-        self.critic = nn.Sequential(
-            nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, 1)
-        )
-
-    def forward(self, x):
-        policy = self.policy(x)
-        state_value = self.critic(x)
-
-        return policy, state_value
-
-
 class ActorCriticAgent:
 
     def __init__(self, nb_actions, learning_rate, gamma, hidden_size, model_input_size, entropy_coeff_start, entropy_coeff_end, entropy_coeff_anneal, continuous):
@@ -237,7 +158,7 @@ class ActorCriticAgent:
                                      inputs=model_input_size, outputs=nb_actions).to(self.device)
 
         self.hidden_size = hidden_size
-        self.optimizer = torch.optim.Adam(
+        self.optimizer = torch.optim.AdamW(
             self.model.parameters(), lr=self.learning_rate)
 
         self.loss_function = torch.nn.MSELoss()
