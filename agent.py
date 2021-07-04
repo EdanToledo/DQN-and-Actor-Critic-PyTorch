@@ -7,7 +7,8 @@ import torch.nn.functional as F
 import os
 from utils import Replay_Memory, Transition, Prioritized_Replay_Memory, TransitionPolicy
 from torch.distributions import Categorical, Normal
-from models import ActorCriticContinuous,ActorCritic,DQN
+from models import ActorCriticContinuous, ActorCritic, DQN
+
 
 class QAgent:
 

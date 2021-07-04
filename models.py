@@ -9,6 +9,7 @@ import os
 from utils import Replay_Memory, Transition, Prioritized_Replay_Memory, TransitionPolicy
 from torch.distributions import Categorical, Normal
 
+
 class DQN(nn.Module):
 
     def __init__(self, inputs, hidden_size, outputs):
@@ -16,9 +17,9 @@ class DQN(nn.Module):
         # Simple feed forward NN
         self.net = nn.Sequential(
             nn.Linear(inputs, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, outputs))
 
     def forward(self, x):
@@ -30,34 +31,34 @@ class ActorCriticContinuous(nn.Module):
         super(ActorCriticContinuous, self).__init__()
         self.policy = nn.Sequential(
             nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, outputs)
         )
 
-        self.log_deviations = nn.Parameter(torch.full((outputs,), 0.1))
-        # self.dev = nn.Sequential(
-        #     nn.Linear(inputs, hidden_size),
-        #     nn.Tanh(),
-        #     nn.Linear(hidden_size, hidden_size),
-        #     nn.ReLU(),
-        #     nn.Linear(hidden_size, outputs)
-        # )
+        # self.log_deviations = nn.Parameter(torch.full((outputs,), 0.2))
+        self.dev = nn.Sequential(
+            nn.Linear(inputs, hidden_size),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_size, outputs)
+        )
 
         self.critic = nn.Sequential(
             nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, 1)
         )
 
     def forward(self, x):
         means = self.policy(x)
         state_value = self.critic(x)
-        # dev = torch.clamp(self.dev(x).exp(), 1e-3, 50)
-        dev = torch.clamp(self.log_deviations.exp(), 1e-3, 50)
+        dev = torch.clamp(self.dev(x).exp(), 1e-3, 50)
+        # dev = torch.clamp(self.log_deviations.exp(), 1e-3, 50)
         return means, dev, state_value
 
 
@@ -66,18 +67,18 @@ class ActorCritic(nn.Module):
         super(ActorCritic, self).__init__()
         self.policy = nn.Sequential(
             nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, outputs),
             nn.Softmax(dim=-1)
         )
 
         self.critic = nn.Sequential(
             nn.Linear(inputs, hidden_size),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(hidden_size, 1)
         )
 
@@ -86,4 +87,3 @@ class ActorCritic(nn.Module):
         state_value = self.critic(x)
 
         return policy, state_value
-

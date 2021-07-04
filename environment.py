@@ -85,7 +85,6 @@ def trainQ(agent, env, number_of_steps, number_of_episodes, START_RENDERING, upd
             wandb.log({"Episode Simulation Render": wandb.Video(
                 np.stack(frames), fps=50, format="gif")})
 
-    
     env.close()
 
 
@@ -140,8 +139,8 @@ def trainActor(agent, env, number_of_steps, number_of_episodes, START_RENDERING,
         wandb.log({"loss": loss})
         wandb.log({"reward": reward_tot})
         wandb.log({"episode": ep_number})
+        wandb.log({"entropy coefficient": agent.get_entropy_coefficient()})
 
-   
     env.close()
 
 
@@ -150,7 +149,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Train a agent on gym environments')
 
-    parser.add_argument('--gym_env', "-g", default="MountainCarContinuous-v0", type=str,
+    parser.add_argument('--gym_env', "-g", default="CartPole-v0", type=str,
                         help='The name of the gym environment')
 
     parser.add_argument('--hidden_size', "-hs", default=64, type=int,
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument('--gamma', "-gm", default=0.999, type=float,
                         help='The discount factor used by the agent')
 
-    parser.add_argument('--learning_rate', "-lr", default=0.0001, type=float,
+    parser.add_argument('--learning_rate', "-lr", default=0.001, type=float,
                         help='The learning rate used by the optimizer')
 
     parser.add_argument('--epsilon_start', "-es", default=0.9, type=float,
@@ -183,13 +182,13 @@ if __name__ == "__main__":
     parser.add_argument('--use_DQN', "-ud",
                         action='store_true', help='Use DQN agent instead of advantage-critic')
 
-    parser.add_argument('--MAX_NUMBER_OF_STEPS', "-ms", default=2000, type=int,
+    parser.add_argument('--MAX_NUMBER_OF_STEPS', "-ms", default=200, type=int,
                         help='The max number of steps per episode')
 
-    parser.add_argument('--EPISODES_TO_TRAIN', "-et", default=10000, type=int,
+    parser.add_argument('--EPISODES_TO_TRAIN', "-et", default=1000, type=int,
                         help='The number of episodes to train')
 
-    parser.add_argument('--START_RENDERING', "-sr", default=5000, type=int,
+    parser.add_argument('--START_RENDERING', "-sr", default=500, type=int,
                         help='The number of episodes to train before rendering - used for training speed up')
 
     parser.add_argument('--update_frequency', "-uf", default=600, type=int,
@@ -201,7 +200,7 @@ if __name__ == "__main__":
     parser.add_argument('--entropy_coefficient_start', "-efs", default=0.9, type=float,
                         help='The starting entropy coefficient used in entropy loss')
 
-    parser.add_argument('--entropy_anneal', "-etn", default=12000, type=int,
+    parser.add_argument('--entropy_anneal', "-etn", default=10000, type=int,
                         help='The number of steps to which the epsilon anneals down')
 
     args = parser.parse_args()
