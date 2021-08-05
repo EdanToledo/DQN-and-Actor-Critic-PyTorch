@@ -1,5 +1,7 @@
 # Simple implementation of a DQN and Advantage Critic 
-Really simple implementation of DQN and Advantage-Critic in pytorch for gym environments.
+Simple implementation of DQN and Advantage-Critic in pytorch for gym environments. 
+The ICM work is slightly rough as this was just used as a playground to test it for other work. 
+The code needs to be refactored to remove the redundunt methods to accomodate the ICM as the majority of work was not written planning for this.
 # Contents
 * agent.py - contains code for agents and models
 * utils.py - contains code for replay memory
